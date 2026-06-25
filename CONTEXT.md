@@ -49,4 +49,10 @@ A component that abstracts communication with a language model — sending a pro
 _(Post-MVP)_ A sub-component of the RAGService. Takes the initial set of Chunks returned by the vector search and re-orders them by relevance before context injection. Not a separate microservice — lives inside the RAGService. Implementation is swappable (cross-encoder model, LLM-based, etc.).
 
 ## Adapter
-A service that bridges a specific source system (Obsidian vault, local folder, etc.) into the pipeline. An Adapter watches its source for new or changed Documents, performs Chunking, and puts the resulting Chunks onto the Queue. Runs as a live-watch daemon.
+A service that bridges a specific source system (Obsidian vault, local folder, etc.) into the pipeline. An Adapter watches its source for new or changed Documents, performs Chunking, and puts the resulting Chunks onto the Queue. Runs as a live-watch daemon. Uses content hashing to detect Document changes — not file modification timestamps, which are unreliable under sync tools and editors.
+
+## Source ID
+An opaque, stable, unique string that an Adapter assigns to a Document. No system-wide format is prescribed — each Adapter uses whatever constitutes a stable identity in its source system (file path, message ID, thread ID, URL, etc.). Used as the deletion key when re-indexing a changed Document. Must be unique within a source type and stable across Document versions. Human-readable location info belongs in the Chunk's `metadata`, not here.
+
+## Content Hash
+A hash of a Document's raw content, stored in the OperationsDB alongside the `source_id`. The Adapter compares the current hash against the stored hash to decide whether a Document needs re-indexing. A changed hash triggers a full re-index of the Document.
