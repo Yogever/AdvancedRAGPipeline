@@ -14,8 +14,8 @@ desing answers to the constraints laid out in [[Spec File]].
 ## Main Components
 1. Adapters, for collecting data to be embbeded
 2. queue - for load balancing
-3. Manager [[micro services|micro service]] for orchistrating embbeding tasks and keeping track of the data that was indexed
-4. Worker [[micro services|micro service]] that listens on a queue and calls the embedding API to vectorize and index the data shards
+3. EmbeddingManager [[micro services|micro service]] for orchistrating embbeding tasks and keeping track of the data that was indexed
+4. EmbeddingWorker [[micro services|micro service]] that listens on a queue and calls the embedding API to vectorize and index the data shards
 5. [[Vector DB]] for storing the vectorized data see [[Vector DB discussion]]
 6. [[MongoDB]] for interanl operation and logging
 7. RAG microservice to inject context to user queries and perform [[Re-rank]]
