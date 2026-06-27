@@ -21,17 +21,20 @@ The component that stores Embeddings and supports similarity search over them. B
 ## OperationsDB
 The internal MongoDB instance used for pipeline state that isn't job-queue-level tracking (which belongs to Celery/Redis). Stores: which Documents have been indexed, pagination state for large Documents mid-processing, and operational logs. Not exposed to the user — purely internal to the pipeline.
 
+## Ingest Queue
+The queue that carries raw Chunks from Adapters to the EmbeddingManager. Adapters publish one message per Chunk; the EmbeddingManager subscribes and consumes them. Implemented on the same Redis/Celery infrastructure as the Job Queue — Adapters call `send_task("embedding_manager.tasks.ingest_chunk", ...)` without importing EmbeddingManager code directly.
+
 ## Job Queue
-The message broker that carries EmbeddingJobs from the EmbeddingManager to EmbeddingWorkers. Each EmbeddingJob is consumed by exactly one EmbeddingWorker (point-to-point, not pub/sub). Implemented with Redis as the broker and Celery as the task queue layer. Not called a "Message Bus" — there is no fanout or publish/subscribe pattern here.
+The queue that carries EmbeddingJobs from the EmbeddingManager to EmbeddingWorkers. Each EmbeddingJob is consumed by exactly one EmbeddingWorker (point-to-point, not pub/sub). Implemented with Redis as the broker and Celery as the task queue layer. Not called a "Message Bus" — there is no fanout or publish/subscribe pattern here.
 
 ## EmbeddingJob
 The queue message dispatched by the EmbeddingManager and consumed by an EmbeddingWorker. Wraps a Chunk with job-level metadata: job ID, source Document reference, retry count, priority, and any other orchestration data. A Chunk is the content; an EmbeddingJob is the envelope that carries it through the pipeline.
 
 ## EmbeddingManager
-The microservice that orchestrates the embedding pipeline. Responsible for tracking which Documents have been processed, managing pagination for large Documents, dispatching Chunks to the Queue, and monitoring job state. Does not embed anything itself — that is the EmbeddingWorker's job.
+The microservice that orchestrates the embedding pipeline. Responsible for tracking which Documents have been processed, dispatching Chunks as EmbeddingJobs to the Job Queue, and managing VectorStore state. Holds read and delete access to the VectorStore: when the first Chunk of a changed Document arrives, the EmbeddingManager queries the VectorStore for existing records and deletes them before dispatching any EmbeddingJobs. Runs with Celery concurrency=1 so delete-before-dispatch is serialised without locks. Does not embed anything itself — that is the EmbeddingWorker's job.
 
 ## EmbeddingWorker
-The microservice that consumes Chunks from the Queue and embeds them by calling the embedding model. Indexing the resulting Embedding into the Vector DB is an implicit final step of the same job. Multiple EmbeddingWorker instances run in parallel to scale throughput. Named for its primary and most expensive responsibility: calling the embedding model.
+The microservice that consumes EmbeddingJobs from the Job Queue and embeds them by calling the embedding model, then writes the resulting Embedding into the VectorStore. Holds write-only access to the VectorStore — it never reads or deletes. Multiple EmbeddingWorker instances can run in parallel to scale throughput. Named for its primary and most expensive responsibility: calling the embedding model.
 
 ## Query
 A natural language question submitted by the user via the CLI. The input to the RAGService.
@@ -41,6 +44,9 @@ The natural language answer returned by the RAGService after retrieval and LLM g
 
 ## RAGService
 The microservice that handles user queries end to end. Receives a natural language Query from the CLI, retrieves relevant Chunks from the Vector DB, injects them as context into a prompt, calls the LLM via the LLM Wrapper, and returns a natural language Response. Uses a Reranker post-MVP.
+
+## EmbeddingClient
+A component that abstracts communication with an embedding model — receiving text and returning a vector. Backed by LangChain's `Embeddings` interface in the current implementation. The EmbeddingWorker calls the EmbeddingClient without knowing which model or provider is underneath. Named independently from LangChain so the domain term remains stable if the implementation changes.
 
 ## LLMClient
 A component that abstracts communication with a language model — sending a prompt and receiving a response. Backed by LangChain in the current implementation. The RAGService calls the LLMClient without knowing which LLM or framework is underneath. Named independently from LangChain so the domain term remains stable if the implementation changes.
