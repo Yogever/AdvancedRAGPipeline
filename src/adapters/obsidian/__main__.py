@@ -1,5 +1,3 @@
-import logging
-
 from celery import Celery
 from pymongo import MongoClient
 
@@ -9,7 +7,9 @@ from adapters.obsidian.config import ObsidianConfig
 from adapters.runner import AdapterRunner
 from shared.repositories import DocumentRecordRepository
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+from shared.logging_config import configure_logging
+
+configure_logging()
 
 config = ObsidianConfig()
 

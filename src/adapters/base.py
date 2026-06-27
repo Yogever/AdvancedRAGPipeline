@@ -11,6 +11,7 @@ from shared.repositories.document_record_repository import DocumentRecordReposit
 logger = logging.getLogger(__name__)
 
 _INGEST_TASK = "embedding_manager.tasks.ingest_chunk"
+_CLEAR_TASK = "embedding_manager.tasks.clear_source"
 
 
 def _hash(content: str) -> str:
@@ -34,8 +35,18 @@ class BaseAdapter(ABC):
         chunks = self._chunk(content, source_id, metadata)
         logger.info("Chunked into %d piece(s): %s", len(chunks), source_id)
 
+        if not chunks:
+            self._repo.save(DocumentRecord(
+                source_id=source_id,
+                content_hash=content_hash,
+                status=DocumentStatus.INDEXING,
+            ))
+            self._celery.send_task(_CLEAR_TASK, args=[source_id], queue="ingest")
+            logger.info("Empty document, dispatched clear: %s", source_id)
+            return
+
         for chunk in chunks:
-            self._celery.send_task(_INGEST_TASK, args=[chunk.model_dump(mode="json")])
+            self._celery.send_task(_INGEST_TASK, args=[chunk.model_dump(mode="json")], queue="ingest")
 
         logger.info("Dispatched %d chunk(s) to ingest queue: %s", len(chunks), source_id)
 
