@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis_broker
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --maxmemory-policy noeviction --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secretpassword
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: redisinsight
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+
+  obsidian_adapter:
+    build: .
+    container_name: obsidian_adapter
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    environment:
+      MONGODB_URI: mongodb://admin:secretpassword@mongodb:27017/
+      MONGODB_DB_NAME: rag_pipeline
+      CELERY_BROKER_URL: redis://redis:6379/0
+      OBSIDIAN_VAULT_PATH: /vault
+    volumes:
+      - ${VAULT_HOST_PATH:?Set VAULT_HOST_PATH to your Obsidian vault directory}:/vault:ro
+
+volumes:
+  redis_data:
+  mongo_data:
