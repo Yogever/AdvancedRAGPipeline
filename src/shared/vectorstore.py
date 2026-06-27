@@ -11,7 +11,7 @@ from qdrant_client.models import (
 from shared.models.vector_record import VectorRecord
 
 _COLLECTION_NAME = "embeddings"
-_VECTOR_DIM = 384
+_VECTOR_DIM = 768
 
 
 class VectorStore:
