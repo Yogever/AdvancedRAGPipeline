@@ -3,6 +3,7 @@ import logging
 from celery import Celery
 from celery.signals import worker_process_init
 from langchain_core.embeddings import Embeddings
+from langchain_ollama import OllamaEmbeddings
 from pymongo import MongoClient
 
 from embedding_worker.config import EmbeddingWorkerConfig
@@ -23,10 +24,14 @@ _embedding_client: Embeddings | None = None
 
 @worker_process_init.connect
 def init_connections(**kwargs):
-    global _repo, _vectorstore
+    global _repo, _vectorstore, _embedding_client
     db = MongoClient(_config.mongodb_uri)[_config.mongodb_db_name]
     _repo = DocumentRecordRepository(db)
     _vectorstore = VectorStore(_config.qdrant_host, _config.qdrant_port)
+    _embedding_client = OllamaEmbeddings(
+        model=_config.embedding_model_id,
+        base_url=_config.ollama_base_url,
+    )
     logger.info("Worker connections initialised")
 
 
