@@ -1,6 +1,7 @@
 import logging
 
 from celery import Celery
+from celery.signals import worker_process_init
 from langchain_core.embeddings import Embeddings
 from pymongo import MongoClient
 
@@ -15,12 +16,18 @@ logger = logging.getLogger(__name__)
 _config = EmbeddingWorkerConfig()
 celery_app = Celery(broker=_config.celery_broker_url)
 
-_db = MongoClient(_config.mongodb_uri)[_config.mongodb_db_name]
-_repo = DocumentRecordRepository(_db)
-_vectorstore = VectorStore(_config.chroma_host, _config.chroma_port)
-
-# Injected by __main__.py before the worker starts.
+_repo: DocumentRecordRepository | None = None
+_vectorstore: VectorStore | None = None
 _embedding_client: Embeddings | None = None
+
+
+@worker_process_init.connect
+def init_connections(**kwargs):
+    global _repo, _vectorstore
+    db = MongoClient(_config.mongodb_uri)[_config.mongodb_db_name]
+    _repo = DocumentRecordRepository(db)
+    _vectorstore = VectorStore(_config.qdrant_host, _config.qdrant_port)
+    logger.info("Worker connections initialised")
 
 
 @celery_app.task(name="embedding_worker.tasks.embed_chunk", bind=True, max_retries=3)

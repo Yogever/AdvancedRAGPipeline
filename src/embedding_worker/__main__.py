@@ -1,18 +1,19 @@
-import logging
-
+from shared.logging_config import configure_logging
 import embedding_worker.tasks as _tasks
 from embedding_worker.tasks import celery_app
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+configure_logging()
 
-# TODO: replace with a real LangChain Embeddings implementation, e.g.:
-#   from langchain_openai import OpenAIEmbeddings
-#   _tasks._embedding_client = OpenAIEmbeddings(model="text-embedding-3-small")
-# or:
-#   from langchain_community.embeddings import SentenceTransformerEmbeddings
-#   _tasks._embedding_client = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-raise NotImplementedError(
-    "Configure an EmbeddingClient in embedding_worker/__main__.py before starting the worker."
-)
+
+class _MockEmbeddings:
+    """Fixed-vector stub — replace with a real LangChain Embeddings implementation."""
+
+    DIM = 384
+
+    def embed_query(self, text: str) -> list[float]:
+        return [0.1] * self.DIM
+
+
+_tasks._embedding_client = _MockEmbeddings()
 
 celery_app.worker_main(argv=["worker", "-Q", "embed", "--loglevel=INFO"])

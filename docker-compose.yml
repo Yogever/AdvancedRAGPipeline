@@ -25,6 +25,9 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: secretpassword
     volumes:
       - mongo_data:/data/db
+    command: ["mongod", "--quiet"]
+    logging:
+      driver: "none"
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 5s
@@ -39,18 +42,14 @@ services:
     depends_on:
       - redis
 
-  chroma:
-    image: chromadb/chroma:latest
-    container_name: chroma
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
     ports:
-      - "8000:8000"
+      - "6333:6333"
+      - "6334:6334"
     volumes:
-      - chroma_data:/chroma/chroma
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+      - qdrant_data:/qdrant/storage
 
   obsidian_adapter:
     build: .
@@ -73,41 +72,43 @@ services:
     build: .
     container_name: embedding_manager
     command: python -m embedding_manager
+    restart: on-failure
     profiles: [pipeline]
     depends_on:
       redis:
         condition: service_healthy
       mongodb:
         condition: service_healthy
-      chroma:
-        condition: service_healthy
+      qdrant:
+        condition: service_started
     environment:
       MONGODB_URI: mongodb://admin:secretpassword@mongodb:27017/
       MONGODB_DB_NAME: rag_pipeline
       CELERY_BROKER_URL: redis://redis:6379/0
-      CHROMA_HOST: chroma
-      CHROMA_PORT: 8000
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
 
   embedding_worker:
     build: .
     container_name: embedding_worker
     command: python -m embedding_worker
+    restart: on-failure
     profiles: [pipeline]
     depends_on:
       redis:
         condition: service_healthy
       mongodb:
         condition: service_healthy
-      chroma:
-        condition: service_healthy
+      qdrant:
+        condition: service_started
     environment:
       MONGODB_URI: mongodb://admin:secretpassword@mongodb:27017/
       MONGODB_DB_NAME: rag_pipeline
       CELERY_BROKER_URL: redis://redis:6379/0
-      CHROMA_HOST: chroma
-      CHROMA_PORT: 8000
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
 
 volumes:
   redis_data:
   mongo_data:
-  chroma_data:
+  qdrant_data:

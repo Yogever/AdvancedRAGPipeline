@@ -1,7 +1,6 @@
-import logging
-
+from shared.logging_config import configure_logging
 from embedding_manager.tasks import celery_app
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+configure_logging()
 
 celery_app.worker_main(argv=["worker", "--concurrency=1", "-Q", "ingest", "--loglevel=INFO"])
