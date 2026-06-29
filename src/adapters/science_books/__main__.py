@@ -1,24 +1,22 @@
 from celery import Celery
 from pymongo import MongoClient
 
-from adapters.obsidian.adapter import ObsidianAdapter
 from adapters.chunker import ChunkingConfig
-from adapters.obsidian.config import ObsidianConfig
-from adapters.runner import AdapterRunner
-from shared.repositories import DocumentRecordRepository
-
+from adapters.science_books.adapter import ScienceBookAdapter
+from adapters.science_books.config import ScienceBookConfig
 from shared.logging_config import configure_logging
+from shared.repositories import DocumentRecordRepository
 
 configure_logging()
 
-config = ObsidianConfig()
+config = ScienceBookConfig()
 
 celery_app = Celery(broker=config.celery_broker_url)
 db = MongoClient(config.mongodb_uri)[config.mongodb_db_name]
 repo = DocumentRecordRepository(db)
 
-adapter = ObsidianAdapter(
-    vault_path=config.vault_path,
+adapter = ScienceBookAdapter(
+    books_path=config.books_path,
     celery_app=celery_app,
     record_repo=repo,
     config=ChunkingConfig(
@@ -27,4 +25,4 @@ adapter = ObsidianAdapter(
     ),
 )
 
-AdapterRunner(adapter).run()
+adapter.start()
