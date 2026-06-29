@@ -27,7 +27,7 @@ def init_connections(**kwargs):
     global _repo, _vectorstore, _embedding_client
     db = MongoClient(_config.mongodb_uri)[_config.mongodb_db_name]
     _repo = DocumentRecordRepository(db)
-    _vectorstore = VectorStore(_config.qdrant_host, _config.qdrant_port)
+    _vectorstore = VectorStore(_config.qdrant_host, _config.qdrant_port, _config.qdrant_collection_name)
     _embedding_client = OllamaEmbeddings(
         model=_config.embedding_model_id,
         base_url=_config.ollama_base_url,
