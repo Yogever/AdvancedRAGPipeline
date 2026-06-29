@@ -6,7 +6,6 @@ _NOISY_LOGGERS = [
     "celery.app.trace",
     "celery.worker",
     "kombu",
-    "watchdog",
     "qdrant_client",
     "httpx",
     "httpcore",

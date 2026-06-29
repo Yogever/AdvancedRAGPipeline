@@ -28,7 +28,7 @@ def init_connections(**kwargs):
     global _repo, _vectorstore
     db = MongoClient(_config.mongodb_uri)[_config.mongodb_db_name]
     _repo = DocumentRecordRepository(db)
-    _vectorstore = VectorStore(_config.qdrant_host, _config.qdrant_port)
+    _vectorstore = VectorStore(_config.qdrant_host, _config.qdrant_port, _config.qdrant_collection_name)
     logger.info("Worker connections initialised")
 
 
