@@ -14,7 +14,7 @@ from shared.vectorstore import VectorStore
 
 logger = logging.getLogger(__name__)
 
-_config = EmbeddingWorkerConfig()
+_config = EmbeddingokayWorkerConfig()
 celery_app = Celery(broker=_config.celery_broker_url)
 
 _repo: DocumentRecordRepository | None = None
