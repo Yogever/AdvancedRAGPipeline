@@ -4,12 +4,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from adapters.chunker import ChunkingConfig
 from adapters.obsidian.adapter import ObsidianAdapter
-from adapters.obsidian.chunker import ChunkingConfig
 from shared.models.document_record import DocumentRecord, DocumentStatus
 from shared.repositories.document_record_repository import DocumentRecordRepository
 
-CFG = ChunkingConfig(max_chars=500, overlap_chars=0)
+CFG = ChunkingConfig(chunk_size=500, chunk_overlap=0)
 
 
 def _hash(content: str) -> str:
