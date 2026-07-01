@@ -19,7 +19,7 @@ The act of storing an Embedding in the Vector DB. Distinct from embedding: an Em
 The component that stores Embeddings and supports similarity search over them. Backed by Chroma in the current implementation, wrapped behind an interface so swapping to Qdrant is a small change. Named independently from Chroma so the domain term stays stable if the implementation changes.
 
 ## OperationsDB
-The internal MongoDB instance used for pipeline state that isn't job-queue-level tracking (which belongs to Celery/Redis). Stores: which Documents have been indexed, pagination state for large Documents mid-processing, and operational logs. Not exposed to the user — purely internal to the pipeline.
+The internal MongoDB instance used for pipeline state that isn't job-queue-level tracking (which belongs to Celery/Redis). Stores: which Documents have been indexed, pagination state for large Documents mid-processing, and Session logs. Not exposed to the user — purely internal to the pipeline.
 
 ## Ingest Queue
 The queue that carries raw Chunks from Adapters to the EmbeddingManager. Adapters publish one message per Chunk; the EmbeddingManager subscribes and consumes them. Implemented on the same Redis/Celery infrastructure as the Job Queue — Adapters call `send_task("embedding_manager.tasks.ingest_chunk", ...)` without importing EmbeddingManager code directly.
@@ -44,6 +44,15 @@ The natural language answer returned by the RAGService after retrieval and LLM g
 
 ## RAGService
 The microservice that handles user queries end to end. Receives a natural language Query from the CLI, retrieves relevant Chunks from the Vector DB, injects them as context into a prompt, calls the LLM via the LLM Wrapper, and returns a natural language Response. Uses a Reranker post-MVP.
+
+## Session
+A single CLI process run, from launch to exit. Identified by a `session_id` generated once at startup and persisted as one growing document in the OperationsDB. A Session contains an ordered sequence of Messages and tracks `started_at`/`ended_at` and a running message count. Switching between Query and Agent mode mid-run (`/query`, `/agent`) does not start a new Session — it only changes the mode recorded on subsequent Messages.
+
+## Message
+One user turn within a Session: a single Query submitted through the CLI, together with the mode it was answered in (Query or Agent), its Response, any Sources returned, the Tool Calls made to produce it (Agent mode only), and an Error if the turn failed. Numbered sequentially within its Session (`message_number`). Where Query/Response describe the request/reply pair in isolation, a Message is the persisted record of that pair plus everything that happened to produce it.
+
+## Tool Call
+One invocation of a tool (e.g. `search_notes`) made by the LLM during an Agent-mode Message's reasoning loop. Recorded with its iteration number, exact parameters, the retrieved content and Sources it returned, and an Error if the invocation failed. A single Message may have zero Tool Calls (Query mode, or an Agent turn answered without searching) or several (multi-hop retrieval).
 
 ## EmbeddingClient
 A component that abstracts communication with an embedding model — receiving text and returning a vector. Backed by LangChain's `Embeddings` interface in the current implementation. The EmbeddingWorker calls the EmbeddingClient without knowing which model or provider is underneath. Named independently from LangChain so the domain term remains stable if the implementation changes.

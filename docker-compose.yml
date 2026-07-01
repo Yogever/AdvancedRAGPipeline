@@ -17,7 +17,7 @@ services:
   mongodb:
     image: mongo:7
     container_name: mongodb
-    profiles: [pipeline, adapters]
+    profiles: [pipeline, adapters, cli]
     ports:
       - "27017:27017"
     environment:
