@@ -14,10 +14,10 @@ class RetrievedChunk(BaseModel):
     def from_document(cls, doc: Document) -> "RetrievedChunk":
         # langchain_qdrant puts the entire Qdrant payload (minus the content key)
         # into doc.metadata, so our nested "metadata" dict is one level down.
-        inner = doc.metadata.get("metadata", {})
+        inner = doc.metadata
         return cls(
             content=doc.page_content,
-            source_id=inner.get("source_id", "unknown"),
+            source_id=inner.get("source_id", 'unknown')    ,
             source_type=inner.get("source_type", "unknown"),
             path=inner.get("path", ""),
             chunk_index=inner.get("chunk_index", 0),
